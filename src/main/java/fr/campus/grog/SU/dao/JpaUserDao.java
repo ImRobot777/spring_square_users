@@ -21,12 +21,12 @@ public class JpaUserDao implements UserDao{
 
     @Override
     public UserEntity create(UserEntity user) {
-        return repository.save(user);
+        return this.repository.save(user);
     }
 
     @Override
     public Optional<UserEntity> find(UUID userId) {
-        return repository.findById(userId.toString());
+        return this.repository.findById(userId.toString());
     }
 
     @Override
@@ -36,6 +36,8 @@ public class JpaUserDao implements UserDao{
 
     @Override
     public boolean isExisting(UUID userId) {
-        return repository.existsById(userId.toString());
+        return this.repository.existsById(userId.toString());
     }
+
+
 }
