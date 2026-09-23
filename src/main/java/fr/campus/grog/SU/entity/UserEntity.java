@@ -9,6 +9,8 @@ public class UserEntity {
     public String id;
     public String pseudo;
     public String email;
+    public String passwordHash;
+    public String role;
 
     // Constructor without argument : Mandatory for Hibernate !
     public UserEntity() {}

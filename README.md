@@ -12,27 +12,32 @@ Microservice Spring Boot responsable de la gestion des profils utilisateurs (cr�
 
 ## 🏗️ Architecture & Choix Techniques
 
-Le service applique les principes de l'architecture logicielle en couches et du patron de conception *Database-per-Service* :
-- **Couche Présentation REST (`controller`)** : Endpoints CRUD stricts, respect des codes HTTP standards (`200 OK`, `204 NO CONTENT`, `404 NOT FOUND`, `400 BAD REQUEST`), et documentation interactive OpenAPI 3 avec SpringDoc.
-- **Couche Métier (`service`)** : Validation des données entrantes, attribution automatique d'un identifiant `UUID`, et contrôle d'existence pré-suppression.
+Le service applique les principes de l'architecture logicielle en couches, du patron *Database-per-Service* et d'une sécurité *Stateless* moderne :
+- **Sécurité & Authentification Stateless (`config`, `service`)** :
+  - **Spring Security 6** : Configuration centralisée dans `SecurityConfig` avec `SessionCreationPolicy.STATELESS` et protection CSRF désactivée.
+  - **Hachage BCrypt** : Tous les mots de passe sont salés et hachés avec `BCryptPasswordEncoder` avant persistance.
+  - **Moteur JWT Asymétrique (RS256)** : Émission et validation de jetons JWT signés avec une paire de clés RSA 2048 bits (`private_key.pem` conservée par SU, `public_key.pem` partagée).
+- **Couche Présentation REST (`controller`)** : Endpoints CRUD stricts, respect des codes HTTP standards (`200 OK`, `204 NO CONTENT`, `404 NOT FOUND`, `400 BAD REQUEST`, `401 UNAUTHORIZED`), et documentation interactive OpenAPI 3 avec SpringDoc.
+- **Couche Métier (`service`)** : Validation des données entrantes, attribution automatique d'un identifiant `UUID`, hachage du mot de passe avec BCrypt, attribution du rôle par défaut (`ROLE_USER`), et émission de jetons JWT (`JwtService`).
 - **Objets de Transfert (`dto`)** : Enregistrements Java (`record`) immutables (`UserCreationParams`) garantissant un découplage strict entre les flux réseaux JSON et les entités internes.
-- **Couche Persistance (`dao`, `entity`)** : Persistance relationnelle avec **Spring Data JPA** et **Hibernate**. Contrairement à Square Games, ce microservice possède la totale maîtrise de son modèle de données (pas de bibliothèque externe imposée) : l'entité `UserEntity` est directement synchronisée avec la base de données sans adaptateur asymétrique complexe.
+- **Couche Persistance (`dao`, `entity`)** : Persistance relationnelle avec **Spring Data JPA** et **Hibernate**. L'entité `UserEntity` stocke le profil avec son `passwordHash` et son `role`.
 - **Isolation Complète des Données** : Square Users dispose de son propre conteneur Docker PostgreSQL dédié (`su-postgres`), isolé du conteneur de jeux sur le port hôte `5433`.
 
 ```text
-[ Client HTTP / Bruno ] ────> [ UserController ] (@RestController - Port 8081)
-                                      │
-                                      ▼
-[ Square Games (SG) ] ──────> [ UserServiceImpl ] (@Service)
- (GET /users/{id}/valid)              │
-                                      ▼
-                              [ JpaUserDao ] (@Repository)
-                                      │
-                                      ▼
-                           [ UserEntityRepository ] (Spring Data JPA)
-                                      │
-                                      ▼
-                         [ Conteneur PostgreSQL (Port 5433) ]
+[ Square Games (SG) ] ──(GET /users/{userId}/valid)──> [ UserController ] (@RestController - Port 8081)
+                                                              │
+[ Client HTTP / Admin ] ──(POST /users, GET, DELETE)─────────┤
+                                                              ▼
+                                                     [ UserServiceImpl ] (@Service)
+                                                              │
+                                                              ▼
+                                                      [ JpaUserDao ] (@Repository)
+                                                              │
+                                                              ▼
+                                                   [ UserEntityRepository ] (Spring Data JPA)
+                                                              │
+                                                              ▼
+                                                 [ Conteneur PostgreSQL (Port 5433) ]
 ```
 
 ---
@@ -110,13 +115,14 @@ Dès le démarrage de l'application, la documentation interactive Swagger UI est
 ## 🌐 Guide des Endpoints & Exemples `curl`
 
 ### 1. Créer un nouvel utilisateur (`POST /users`)
-Crée un compte et génère automatiquement un identifiant UUID unique.
+Crée un compte avec mot de passe haché par BCrypt et génère automatiquement un identifiant UUID unique.
 ```bash
 curl -X POST http://localhost:8081/users \
   -H "Content-Type: application/json" \
   -d '{
     "pseudo": "Alice",
-    "email": "alice@test.com"
+    "email": "alice@test.com",
+    "password": "secretPassword123"
   }'
 ```
 *Réponse HTTP 200 OK :*
@@ -124,7 +130,9 @@ curl -X POST http://localhost:8081/users \
 {
   "id": "b8f05e32-1234-4a56-b789-0123456789ab",
   "pseudo": "Alice",
-  "email": "alice@test.com"
+  "email": "alice@test.com",
+  "passwordHash": "$2a$10$w...hachageBCryptSecurise...",
+  "role": "ROLE_USER"
 }
 ```
 
@@ -149,14 +157,33 @@ curl -X DELETE http://localhost:8081/users/b8f05e32-1234-4a56-b789-0123456789ab
 ```
 *Réponse : Code HTTP `204 NO CONTENT` (succès sans corps).*
 
+### 5. S'authentifier et obtenir un JWT (`POST /auth/login`)
+Authentifie l'utilisateur via son pseudo et mot de passe, puis délivre un jeton JWT asymétrique signé avec RSA 2048 bits (RS256) :
+```bash
+curl -X POST http://localhost:8081/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "Alice",
+    "password": "secretPassword123"
+  }'
+```
+*Réponse HTTP 200 OK :*
+```json
+{
+  "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "type": "Bearer"
+}
+```
+*(Si les identifiants sont erronés, l'API répond en `401 UNAUTHORIZED`).*
+
 ---
 
 ## 🧪 Exécution des Tests Automatisés
 
-Le microservice est couvert par une suite de tests unitaires et d'intégration validant le contrôleur web, la couche service et le DAO avec **JUnit 5**, **Mockito** et **MockMvc** :
+Le microservice est couvert par une suite de tests unitaires et d'intégration validant le contrôleur web, le contrôleur d'authentification, la couche service, le filtre JWT et le DAO avec **JUnit 5**, **Mockito** et **MockMvc** :
 
 ```bash
-# Exécution de l'intégralité de la suite de tests (13 tests, 0 échec)
+# Exécution de l'intégralité de la suite de tests (22 tests, 0 échec)
 ./mvnw clean test -Dspring.profiles.active=h2
 ```
 

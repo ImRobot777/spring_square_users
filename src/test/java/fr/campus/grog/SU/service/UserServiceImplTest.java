@@ -9,6 +9,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
@@ -22,11 +23,13 @@ import static org.mockito.Mockito.*;
 class UserServiceImplTest {
     @Mock
     private UserDao userDao; // Mockito automatically create the FAKE userDao
+    @Mock
+    private PasswordEncoder passwordEncoder; // Fake passwordEncoder
     private UserServiceImpl userService; // The REAL Service we want to test !
     @BeforeEach
     void setUp() {
         // Executed before each test : Fake DAO is injected in the REAL service
-        this.userService = new UserServiceImpl(userDao);
+        this.userService = new UserServiceImpl(userDao, passwordEncoder);
     }
 
     @Test
@@ -70,7 +73,7 @@ class UserServiceImplTest {
     @Test
     public void testCreateUser_SetsFieldsAndDelegatesToDao() {
         // --- 1. ARRANGE ---
-        UserCreationParams params = new UserCreationParams("Alice", "alice@example.com");
+        UserCreationParams params = new UserCreationParams("Alice", "alice@example.com", "12345");
         UserEntity savedUser = new UserEntity();
         savedUser.id = UUID.randomUUID().toString();
         savedUser.pseudo = "Alice";

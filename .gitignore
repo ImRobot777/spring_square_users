@@ -15,6 +15,13 @@ application-local.properties
 application-local.yml
 application-*-local.properties
 
+### --- Clés Cryptographiques & Certificats Privés ---
+# Ne JAMAIS commiter la clé privée dans Git !
+**/certs/private_key.pem
+*.key
+*.pem
+!**/certs/public_key.pem
+
 ### --- Logs & Rapports d'erreurs JVM ---
 *.log
 logs/
