@@ -3,13 +3,15 @@ package fr.campus.grog.SU.service;
 import fr.campus.grog.SU.dto.UserCreationParams;
 import fr.campus.grog.SU.entity.UserEntity;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface UserService {
 
-    public UserEntity createUser(UserCreationParams requestParams);
-    public UserEntity getUser(UUID id);
-    public void deleteUser(UUID id);
-    public boolean isUserValid(UUID id);
+    UserEntity createUser(UserCreationParams requestParams);
+    UserEntity getUser(UUID id);
+    void deleteUser(UUID id);
+    boolean isUserValid(UUID id);
+    List<UserEntity> getUsers();
 
 }

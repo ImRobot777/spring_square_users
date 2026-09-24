@@ -5,6 +5,7 @@ import fr.campus.grog.SU.entity.UserEntityRepository;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -32,6 +33,11 @@ public class JpaUserDao implements UserDao{
     public Optional<UserEntity> findByPseudo(String pseudo) {
         // Delegates directly to Spring Data JPA derived query method
         return this.repository.findByPseudo(pseudo);
+    }
+
+    @Override
+    public List<UserEntity> findAllUsers(){
+        return this.repository.findAll();
     }
 
     @Override

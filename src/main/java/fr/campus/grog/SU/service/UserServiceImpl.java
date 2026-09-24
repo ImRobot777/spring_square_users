@@ -10,6 +10,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -38,6 +39,11 @@ public class UserServiceImpl implements UserService {
     public UserEntity getUser(UUID userId){
         return this.userDao.find(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+    }
+
+    @Override
+    public List<UserEntity> getUsers(){
+        return this.userDao.findAllUsers(); // Returns empty list [] if no users exist
     }
 
     @Override

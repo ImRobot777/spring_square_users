@@ -21,7 +21,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 
 @RestController
-@Tag(name = "Authentification", description = "Endpoints d'authentification et émission de jetons JWT")
+@Tag(name = "Authentication", description = "Authentication endpoints and JWT token issuance")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -32,10 +32,10 @@ public class AuthController {
         this.jwtService = jwtService;
     }
 
-    @Operation(summary = "Connexion utilisateur", description = "Vérifie les identifiants et génère un jeton JWT asymétrique (RS256).")
+    @Operation(summary = "User login", description = "Authenticates user credentials and generates an asymmetric JWT token (RS256).")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "Authentification réussie, jeton JWT retourné"),
-            @ApiResponse(responseCode = "401", description = "Identifiants invalides (pseudo ou mot de passe incorrect)")
+            @ApiResponse(responseCode = "200", description = "Authentication successful, JWT token returned"),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials (incorrect username or password)")
     })
     @PostMapping("/auth/login")
     public AuthResponse login(@RequestBody LoginRequest request) {
