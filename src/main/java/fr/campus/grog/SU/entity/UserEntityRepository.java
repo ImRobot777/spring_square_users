@@ -15,4 +15,13 @@ public interface UserEntityRepository extends JpaRepository<UserEntity, String> 
      * @return Optional containing the UserEntity if found, empty Optional otherwise
      */
     Optional<UserEntity> findByPseudo(String pseudo);
+
+    /**
+     * Derives a SQL query to find a user entity by its email.
+     * Spring Data JPA translates this method name into: SELECT * FROM user_entity WHERE email = ?
+     *
+     * @param email The unique email to search for
+     * @return Optional containing the UserEntity if found, empty Optional otherwise
+     */
+    Optional<UserEntity> findByEmail(String email);
 }

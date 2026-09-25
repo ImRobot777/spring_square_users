@@ -36,6 +36,12 @@ public class JpaUserDao implements UserDao{
     }
 
     @Override
+    public Optional<UserEntity> findByEmail(String email) {
+        // Delegates directly to Spring Data JPA derived query method
+        return this.repository.findByEmail(email);
+    }
+
+    @Override
     public List<UserEntity> findAllUsers(){
         return this.repository.findAll();
     }

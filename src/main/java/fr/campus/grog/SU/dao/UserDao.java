@@ -16,6 +16,15 @@ public interface UserDao {
      * @return Optional containing the UserEntity if found, empty Optional otherwise
      */
     Optional<UserEntity> findByPseudo(String pseudo);
+
+    /**
+     * Retrieves an existing user entity by its email.
+     *
+     * @param email The unique email to look up
+     * @return Optional containing the UserEntity if found, empty Optional otherwise
+     */
+    Optional<UserEntity> findByEmail(String email);
+
     List<UserEntity> findAllUsers();
     UserEntity create(UserEntity user);
     void delete(UUID id);

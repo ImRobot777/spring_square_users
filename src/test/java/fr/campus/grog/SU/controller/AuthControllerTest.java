@@ -1,5 +1,7 @@
 package fr.campus.grog.SU.controller;
 
+import fr.campus.grog.SU.entity.UserEntity;
+import fr.campus.grog.SU.service.CustomUserDetails;
 import fr.campus.grog.SU.service.JwtService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,12 +48,12 @@ class AuthControllerTest {
         Authentication fakeAuth = mock(Authentication.class);
         when(fakeAuth.getName()).thenReturn("Alice");
         doReturn(List.of(new SimpleGrantedAuthority("ROLE_USER"))).when(fakeAuth).getAuthorities();
-
+        UserEntity fakeUser = new UserEntity(); fakeUser.id = "uuid-123"; fakeUser.pseudo = "Alice"; fakeUser.role = "ROLE_USER";
+        when(fakeAuth.getPrincipal()).thenReturn(new CustomUserDetails(fakeUser));
         when(this.authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
                 .thenReturn(fakeAuth);
 
-        when(this.jwtService.generateToken("Alice", List.of("ROLE_USER")))
-                .thenReturn("mocked.jwt.token");
+        when(this.jwtService.generateToken("Alice", "uuid-123", List.of("ROLE_USER"))).thenReturn("mocked.jwt.token");
 
         String requestBody = """
         {
@@ -69,7 +71,7 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.type").value("Bearer"));
 
         verify(this.authenticationManager, times(1)).authenticate(any(UsernamePasswordAuthenticationToken.class));
-        verify(this.jwtService, times(1)).generateToken("Alice", List.of("ROLE_USER"));
+        verify(this.jwtService, times(1)).generateToken("Alice", "uuid-123", List.of("ROLE_USER"));
     }
 
     @Test

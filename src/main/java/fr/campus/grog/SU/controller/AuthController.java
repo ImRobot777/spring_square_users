@@ -2,6 +2,7 @@ package fr.campus.grog.SU.controller;
 
 import fr.campus.grog.SU.dto.AuthResponse;
 import fr.campus.grog.SU.dto.LoginRequest;
+import fr.campus.grog.SU.service.CustomUserDetails;
 import fr.campus.grog.SU.service.JwtService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -45,13 +46,17 @@ public class AuthController {
                     new UsernamePasswordAuthenticationToken(request.username(), request.password())
             );
 
-            // Step 2: Extract granted authorities/roles from authenticated principal
+            // From Here the user is fully authenticated and authentication knows customUserDetails
+
+            // Step 2: Extract granted authorities/roles from authenticated User (principal)
             List<String> roles = authentication.getAuthorities().stream()
                     .map(GrantedAuthority::getAuthority)
                     .toList();
 
             // Step 3: Generate signed JWT token using RSA private key
-            String token = this.jwtService.generateToken(authentication.getName(), roles);
+            CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
+            String token = this.jwtService.generateToken(authentication.getName(), userDetails.getUserId(), roles);
+
 
             return new AuthResponse(token, "Bearer");
         } catch (AuthenticationException e) {

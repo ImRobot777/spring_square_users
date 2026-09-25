@@ -1,5 +1,6 @@
 package fr.campus.grog.SU.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 
@@ -7,8 +8,13 @@ import jakarta.persistence.Id;
 public class UserEntity {
     @Id
     public String id;
+
+    @Column(unique = true, nullable = false)
     public String pseudo;
+
+    @Column(unique = true, nullable = false)
     public String email;
+
     public String passwordHash;
     public String role;
 

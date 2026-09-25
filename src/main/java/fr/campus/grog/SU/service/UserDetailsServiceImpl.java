@@ -2,7 +2,7 @@ package fr.campus.grog.SU.service;
 
 import fr.campus.grog.SU.dao.UserDao;
 import fr.campus.grog.SU.entity.UserEntity;
-import org.springframework.security.core.userdetails.User;
+//import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -33,10 +33,6 @@ public class UserDetailsServiceImpl implements UserDetailsService {
         UserEntity user = this.userDao.findByPseudo(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with pseudo: " + username));
 
-        return User.builder()
-                .username(user.pseudo)
-                .password(user.passwordHash)
-                .authorities(user.role)
-                .build();
+        return new CustomUserDetails(user);
     }
 }

@@ -75,7 +75,7 @@
 			<version>2.8.5</version>
 		</dependency>
 
-		<!-- For JWT and more -->
+		<!-- For JWT and SECURITY -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-security</artifactId>

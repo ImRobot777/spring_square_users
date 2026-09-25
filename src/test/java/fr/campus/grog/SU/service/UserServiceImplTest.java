@@ -79,6 +79,8 @@ class UserServiceImplTest {
         savedUser.pseudo = "Alice";
         savedUser.email = "alice@example.com";
 
+        when(userDao.findByPseudo("Alice")).thenReturn(Optional.empty());
+        when(userDao.findByEmail("alice@example.com")).thenReturn(Optional.empty());
         when(userDao.create(any(UserEntity.class))).thenReturn(savedUser);
 
         // --- 2. ACT ---
@@ -89,6 +91,39 @@ class UserServiceImplTest {
         assertEquals("Alice", result.pseudo);
         assertEquals("alice@example.com", result.email);
         verify(userDao, times(1)).create(any(UserEntity.class));
+    }
+
+    @Test
+    public void testCreateUser_WhenPseudoAlreadyExists_ThrowsConflictException() {
+        // --- 1. ARRANGE ---
+        UserCreationParams params = new UserCreationParams("Alice", "alice@example.com", "12345");
+        when(userDao.findByPseudo("Alice")).thenReturn(Optional.of(new UserEntity()));
+
+        // --- 2 & 3. ACT & ASSERT ---
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.createUser(params)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verify(userDao, never()).create(any(UserEntity.class));
+    }
+
+    @Test
+    public void testCreateUser_WhenEmailAlreadyExists_ThrowsConflictException() {
+        // --- 1. ARRANGE ---
+        UserCreationParams params = new UserCreationParams("Alice", "alice@example.com", "12345");
+        when(userDao.findByPseudo("Alice")).thenReturn(Optional.empty());
+        when(userDao.findByEmail("alice@example.com")).thenReturn(Optional.of(new UserEntity()));
+
+        // --- 2 & 3. ACT & ASSERT ---
+        ResponseStatusException exception = assertThrows(
+                ResponseStatusException.class,
+                () -> userService.createUser(params)
+        );
+
+        assertEquals(HttpStatus.CONFLICT, exception.getStatusCode());
+        verify(userDao, never()).create(any(UserEntity.class));
     }
 
     @Test

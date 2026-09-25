@@ -26,6 +26,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public UserEntity createUser(UserCreationParams requestParams){
+        // Step 1: Ensure pseudo and email uniqueness to protect query derivation and DB integrity
+        if (this.userDao.findByPseudo(requestParams.pseudo()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Pseudo is already taken: " + requestParams.pseudo());
+        }
+        if (this.userDao.findByEmail(requestParams.email()).isPresent()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email is already in use: " + requestParams.email());
+        }
+
         UserEntity user = new UserEntity();
         user.id = UUID.randomUUID().toString();
         user.pseudo = requestParams.pseudo();
