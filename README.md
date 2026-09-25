@@ -16,8 +16,9 @@ Le service applique les principes de l'architecture logicielle en couches, du pa
 - **Sécurité & Authentification Stateless (`config`, `service`)** :
   - **Spring Security 6** : Configuration centralisée dans `SecurityConfig` avec `SessionCreationPolicy.STATELESS` et protection CSRF désactivée.
   - **Hachage BCrypt** : Tous les mots de passe sont salés et hachés avec `BCryptPasswordEncoder` avant persistance.
-  - **Moteur JWT Asymétrique (RS256)** : Émission et validation de jetons JWT signés avec une paire de clés RSA 2048 bits (`private_key.pem` conservée par SU, `public_key.pem` partagée).
-- **Couche Présentation REST (`controller`)** : Endpoints CRUD stricts, respect des codes HTTP standards (`200 OK`, `204 NO CONTENT`, `404 NOT FOUND`, `400 BAD REQUEST`, `401 UNAUTHORIZED`), et documentation interactive OpenAPI 3 avec SpringDoc.
+  - **Moteur JWT Asymétrique (RS256) & Custom Claims** : Émission de jetons JWT signés avec une clé privée RSA 2048 bits (`private_key.pem`). Les jetons intègrent les claims personnalisés `"userId"` (`UUID`) et `"roles"`, construits grâce à `CustomUserDetails` sans requêtes SQL redondantes.
+  - **Sécurité des Méthodes (RBAC & ABAC)** : Activation de `@EnableMethodSecurity`. Protection déclarative fine via SpEL : `@PreAuthorize("hasRole('ADMIN')")` pour les actions privilégiées et `@PreAuthorize("#pseudo == authentication.name")` pour l'auto-gestion de compte.
+- **Couche Présentation REST (`controller`)** : Endpoints CRUD stricts, respect des codes HTTP standards (`200 OK`, `204 NO CONTENT`, `404 NOT FOUND`, `400 BAD REQUEST`, `401 UNAUTHORIZED`, `403 FORBIDDEN`), et documentation interactive OpenAPI 3 avec SpringDoc.
 - **Couche Métier (`service`)** : Validation des données entrantes, attribution automatique d'un identifiant `UUID`, hachage du mot de passe avec BCrypt, attribution du rôle par défaut (`ROLE_USER`), et émission de jetons JWT (`JwtService`).
 - **Objets de Transfert (`dto`)** : Enregistrements Java (`record`) immutables (`UserCreationParams`) garantissant un découplage strict entre les flux réseaux JSON et les entités internes.
 - **Couche Persistance (`dao`, `entity`)** : Persistance relationnelle avec **Spring Data JPA** et **Hibernate**. L'entité `UserEntity` stocke le profil avec son `passwordHash` et son `role`.
@@ -189,13 +190,18 @@ Le microservice est couvert par une suite de tests unitaires et d'intégration v
 
 ---
 
-## 🔄 Interaction avec le Microservice Square Games
+## 🔄 Rôle Architectural : Authorization Server dans l'Écosystème
 
 Dans notre écosystème microservices :
-1. **Square Users** (port `8081`) est la source de vérité pour l'identité des joueurs.
-2. **Square Games** (port `8080`) interroge Square Users à chaque action critique via son client HTTP interne (`UserValidationClient`) sur la route :
-   `GET http://localhost:8081/users/{userId}/valid`
-3. Si un utilisateur tente de créer une partie ou de jouer un coup sur Square Games avec un identifiant non déclaré dans Square Users, l'action est immédiatement rejetée en **`403 FORBIDDEN`**.
+1. **Square Users (`SU` - Port 8081)** agit comme **Authorization Server** :
+   - Gère le cycle de vie des utilisateurs et le hachage sécurisé BCrypt des mots de passe.
+   - Délivre des jetons JWT asymétriques signés par sa clé privée RSA 2048 bits via `POST /auth/login`.
+   - Inclut l'identifiant immuable `userId` et les rôles directement dans le payload du jeton.
+2. **Square Games (`SG` - Port 8080)** agit comme **Resource Server Stateless** :
+   - Dispose de la clé publique de `SU` (`public.pem`) pour vérifier instantanément la signature du jeton en mémoire vive.
+   - Ne sollicite aucun appel réseau vers `SU` pour identifier le créateur d'une partie (scalabilité maximale et zéro latence).
+3. **Validation Inter-Services des Adversaires** :
+   - L'endpoint léger `GET /users/{userId}/valid` reste utilisé par le `RestClient` de Square Games pour valider l'existence des adversaires invités dans une partie avant de persister celle-ci.
 
 Pour cloner et démarrer le microservice de jeux :
 👉 [Dépôt GitHub Square Games (SG)](https://github.com/ImRobot777/spring_square_games)
