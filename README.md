@@ -84,6 +84,21 @@ docker start su-postgres
 
 ---
 
+## ⚙️ Configuration & Variables d'Environnement
+
+Le microservice est paramétrable via des variables d'environnement système (méthodologie *12-Factor App*). Chaque variable dispose d'une valeur de repli pour garantir un fonctionnement immédiat en développement local :
+
+| Variable d'Environnement | Description | Valeur par Défaut (Local) |
+|---|---|---|
+| `SU_SERVER_PORT` | Port d'écoute HTTP du serveur Tomcat | `8081` |
+| `SU_DB_URL` | URL JDBC de connexion PostgreSQL | `jdbc:postgresql://localhost:5433/square_users` |
+| `SU_DB_USER` | Nom d'utilisateur de la base de données | `postgres` |
+| `SU_DB_PASSWORD` | Mot de passe de la base de données | `postgres` |
+| `SU_JWT_PRIVATE_KEY_PATH` | Emplacement de la clé privée RSA (utilisée pour signer les jetons) | `classpath:certs/private_key.pem` |
+| `SU_JWT_PUBLIC_KEY_PATH` | Emplacement de la clé publique RSA (utilisée pour valider les jetons) | `classpath:certs/public_key.pem` |
+
+---
+
 ## 🚀 Démarrage de l'Application
 
 ### Option A : Profil PostgreSQL (Recommandé / Production)
