@@ -1,72 +1,72 @@
-# Square Users (SU) — Microservice de Gestion des Utilisateurs
+# Square Users (SU) — User Management Microservice
 
 [![Java](https://img.shields.io/badge/Java-21-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.4.x-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Port](https://img.shields.io/badge/Port-8081-blue.svg)](#)
 [![Database](https://img.shields.io/badge/Database-PostgreSQL%20%2F%20H2-blue.svg)](#)
-[![OpenAPI](https://img.shields.io/badge/Documentation-Swagger%20UI-green.svg)](#-documentation-interactive-swagger-ui)
+[![OpenAPI](https://img.shields.io/badge/Documentation-Swagger%20UI-green.svg)](#-interactive-swagger-ui-documentation)
 
-Microservice Spring Boot responsable de la gestion des profils utilisateurs (création, consultation, suppression, attribution d'UUID unique) et point de contrôle d'existence inter-services pour le microservice de jeux [**Square Games (SG)**](https://github.com/ImRobot777/spring_square_games).
+Spring Boot microservice responsible for managing user profiles (creation, retrieval, deletion, unique UUID generation) and serving as an inter-service existence check endpoint for the [**Square Games (SG)**](https://github.com/ImRobot777/spring_square_games) game engine microservice.
 
 ---
 
-## 🏗️ Architecture & Choix Techniques
+## 🏗️ Architecture & Technical Choices
 
-Le service applique les principes de l'architecture logicielle en couches, du patron *Database-per-Service* et d'une sécurité *Stateless* moderne :
-- **Sécurité & Authentification Stateless (`config`, `service`)** :
-  - **Spring Security 6** : Configuration centralisée dans `SecurityConfig` avec `SessionCreationPolicy.STATELESS` et protection CSRF désactivée.
-  - **Hachage BCrypt** : Tous les mots de passe sont salés et hachés avec `BCryptPasswordEncoder` avant persistance.
-  - **Moteur JWT Asymétrique (RS256) & Custom Claims** : Émission de jetons JWT signés avec une clé privée RSA 2048 bits (`private_key.pem`). Les jetons intègrent les claims personnalisés `"userId"` (`UUID`) et `"roles"`, construits grâce à `CustomUserDetails` sans requêtes SQL redondantes.
-  - **Sécurité des Méthodes (RBAC & ABAC)** : Activation de `@EnableMethodSecurity`. Protection déclarative fine via SpEL : `@PreAuthorize("hasRole('ADMIN')")` pour les actions privilégiées et `@PreAuthorize("#pseudo == authentication.name")` pour l'auto-gestion de compte.
-- **Couche Présentation REST (`controller`)** : Endpoints CRUD stricts, respect des codes HTTP standards (`200 OK`, `204 NO CONTENT`, `404 NOT FOUND`, `400 BAD REQUEST`, `401 UNAUTHORIZED`, `403 FORBIDDEN`), et documentation interactive OpenAPI 3 avec SpringDoc.
-- **Couche Métier (`service`)** : Validation des données entrantes, attribution automatique d'un identifiant `UUID`, hachage du mot de passe avec BCrypt, attribution du rôle par défaut (`ROLE_USER`), et émission de jetons JWT (`JwtService`).
-- **Objets de Transfert (`dto`)** : Enregistrements Java (`record`) immutables (`UserCreationParams`) garantissant un découplage strict entre les flux réseaux JSON et les entités internes.
-- **Couche Persistance (`dao`, `entity`)** : Persistance relationnelle avec **Spring Data JPA** et **Hibernate**. L'entité `UserEntity` stocke le profil avec son `passwordHash` et son `role`.
-- **Isolation Complète des Données** : Square Users dispose de son propre conteneur Docker PostgreSQL dédié (`su-postgres`), isolé du conteneur de jeux sur le port hôte `5433`.
+The service adheres to layered architecture principles, the *Database-per-Service* pattern, and modern *Stateless* security standards:
+- **Stateless Security & Authentication (`config`, `service`)**:
+  - **Spring Security 6**: Centralized in `SecurityConfig` with `SessionCreationPolicy.STATELESS` and CSRF protection disabled.
+  - **BCrypt Hashing**: All passwords are salted and hashed with `BCryptPasswordEncoder` prior to persistence.
+  - **Asymmetric JWT Engine (RS256) & Custom Claims**: Issuance of JWT tokens signed with a 2048-bit RSA private key (`private_key.pem`). Tokens embed custom claims `"userId"` (`UUID`) and `"roles"`, constructed via `CustomUserDetails` without redundant database queries.
+  - **Method Security (RBAC & ABAC)**: `@EnableMethodSecurity` enabled. Fine-grained declarative protection via SpEL: `@PreAuthorize("hasRole('ADMIN')")` for privileged operations and `@PreAuthorize("#pseudo == authentication.name")` for self-account management.
+- **REST Presentation Layer (`controller`)**: Strict CRUD endpoints adhering to standard HTTP status codes (`200 OK`, `204 NO CONTENT`, `404 NOT FOUND`, `400 BAD REQUEST`, `401 UNAUTHORIZED`, `403 FORBIDDEN`), with interactive OpenAPI 3 documentation powered by SpringDoc.
+- **Business Layer (`service`)**: Incoming data validation, automatic `UUID` assignment, BCrypt password hashing, default role assignment (`ROLE_USER`), and JWT token issuance (`JwtService`).
+- **Data Transfer Objects (`dto`)**: Immutable Java records (`UserCreationParams`, `UserResponse`) ensuring strict boundary isolation between network JSON payloads and internal persistence entities (guaranteeing `passwordHash` is never exposed).
+- **Persistence Layer (`dao`, `entity`)**: Relational persistence using **Spring Data JPA** and **Hibernate**. `UserEntity` persists the user account alongside `passwordHash` and `roles`.
+- **Full Data Isolation**: Dedicated PostgreSQL Docker container (`su-postgres`), isolated on host port `5433`.
 
 ```text
 [ Square Games (SG) ] ──(GET /users/{userId}/valid)──> [ UserController ] (@RestController - Port 8081)
-                                                              │
-[ Client HTTP / Admin ] ──(POST /users, GET, DELETE)─────────┤
-                                                              ▼
-                                                     [ UserServiceImpl ] (@Service)
-                                                              │
-                                                              ▼
-                                                      [ JpaUserDao ] (@Repository)
-                                                              │
-                                                              ▼
-                                                   [ UserEntityRepository ] (Spring Data JPA)
-                                                              │
-                                                              ▼
-                                                 [ Conteneur PostgreSQL (Port 5433) ]
+                                                               │
+[ HTTP Client / Admin ] ──(POST /users, GET, DELETE)─────────┤
+                                                               ▼
+                                                      [ UserServiceImpl ] (@Service)
+                                                               │
+                                                               ▼
+                                                       [ JpaUserDao ] (@Repository)
+                                                               │
+                                                               ▼
+                                                    [ UserEntityRepository ] (Spring Data JPA)
+                                                               │
+                                                               ▼
+                                                  [ PostgreSQL Container (Port 5433) ]
 ```
 
 ---
 
-## 📋 Prérequis
+## 📋 Prerequisites
 
-1. **Java Development Kit (JDK) 21** ou supérieur :
+1. **Java Development Kit (JDK) 21** or higher:
    ```bash
    java -version
    ```
-2. **Docker** (pour exécuter la base de données PostgreSQL) :
+2. **Docker** (to run the PostgreSQL database):
    ```bash
    docker --version
    ```
-3. **Maven Wrapper** (inclus directement dans le projet via `./mvnw`).
+3. **Maven Wrapper** (included directly in the project via `./mvnw`).
 
 ---
 
-## 🗄️ Infrastructure Base de Données (Docker)
+## 🗄️ Database Infrastructure (Docker)
 
-Le service s'exécute avec sa propre base PostgreSQL 16 conteneurisée.
-> ⚠️ **Note sur les Ports** : Pour éviter tout conflit avec le port PostgreSQL par défaut (`5432`) utilisé par Square Games, le port hôte de ce conteneur est configuré sur **`5433`** (avec redirection vers le port interne `5432`).
+The service runs with its own dedicated PostgreSQL 16 container.
+> ⚠️ **Port Configuration Note**: To avoid collision with the default PostgreSQL port (`5432`) used by Square Games, the host port is mapped to **`5433`** (forwarded to internal container port `5432`).
 
 ```bash
-# 1. Créer le volume Docker pour la rétention persistante
+# 1. Create Docker volume for persistent data retention
 docker volume create su-postgres-data
 
-# 2. Démarrer le conteneur PostgreSQL dédié
+# 2. Start dedicated PostgreSQL container
 docker run -d \
   --name su-postgres \
   -p 5433:5432 \
@@ -77,61 +77,61 @@ docker run -d \
   postgres:16
 ```
 
-Pour redémarrer un conteneur arrêté :
+To restart an existing container:
 ```bash
 docker start su-postgres
 ```
 
 ---
 
-## ⚙️ Configuration & Variables d'Environnement
+## ⚙️ Configuration & Environment Variables
 
-Le microservice est paramétrable via des variables d'environnement système (méthodologie *12-Factor App*). Chaque variable dispose d'une valeur de repli pour garantir un fonctionnement immédiat en développement local :
+The microservice can be configured through system environment variables (*12-Factor App* methodology). Each variable has a default fallback for local development:
 
-| Variable d'Environnement | Description | Valeur par Défaut (Local) |
+| Environment Variable | Description | Local Default |
 |---|---|---|
-| `SU_SERVER_PORT` | Port d'écoute HTTP du serveur Tomcat | `8081` |
-| `SU_DB_URL` | URL JDBC de connexion PostgreSQL | `jdbc:postgresql://localhost:5433/square_users` |
-| `SU_DB_USER` | Nom d'utilisateur de la base de données | `postgres` |
-| `SU_DB_PASSWORD` | Mot de passe de la base de données | `postgres` |
-| `SU_JWT_PRIVATE_KEY_PATH` | Emplacement de la clé privée RSA (utilisée pour signer les jetons) | `classpath:certs/private_key.pem` |
-| `SU_JWT_PUBLIC_KEY_PATH` | Emplacement de la clé publique RSA (utilisée pour valider les jetons) | `classpath:certs/public_key.pem` |
+| `SU_SERVER_PORT` | HTTP server listening port | `8081` |
+| `SU_DB_URL` | PostgreSQL JDBC connection URL | `jdbc:postgresql://localhost:5433/square_users` |
+| `SU_DB_USER` | Database username | `postgres` |
+| `SU_DB_PASSWORD` | Database password | `postgres` |
+| `SU_JWT_PRIVATE_KEY_PATH` | Path to RSA private key (used to sign JWT tokens) | `classpath:certs/private_key.pem` |
+| `SU_JWT_PUBLIC_KEY_PATH` | Path to RSA public key (used to verify JWT tokens) | `classpath:certs/public_key.pem` |
 
 ---
 
-## 🚀 Démarrage de l'Application
+## 🚀 Running the Application
 
-### Option A : Profil PostgreSQL (Recommandé / Production)
-Assurez-vous que le conteneur `su-postgres` est démarré sur le port `5433`, puis lancez :
+### Option A: PostgreSQL Profile (Recommended / Production)
+Ensure the `su-postgres` container is running on port `5433`, then launch:
 
 ```bash
 ./mvnw spring-boot:run
 ```
-L'application démarre sur le port **8081** et se connecte à `jdbc:postgresql://localhost:5433/square_users`.
+The application starts on port **8081** and connects to `jdbc:postgresql://localhost:5433/square_users`.
 
-### Option B : Profil H2 (Mode Léger / Sans Docker)
-Pour lancer le microservice instantanément en mémoire sans aucune dépendance Docker :
+### Option B: H2 Profile (Lightweight / Docker-free Mode)
+To run the service instantly in memory without Docker dependencies:
 
 ```bash
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=h2
 ```
-*Console web H2 disponible sur : `http://localhost:8081/h2-console` (JDBC URL : `jdbc:h2:mem:square_users`, User : `sa`, mot de passe vide).*
+*H2 web console available at: `http://localhost:8081/h2-console` (JDBC URL: `jdbc:h2:mem:square_users`, User: `sa`, empty password).*
 
 ---
 
-## 📖 Documentation Interactive Swagger UI
+## 📖 Interactive Swagger UI Documentation
 
-Dès le démarrage de l'application, la documentation interactive Swagger UI est directement accessible dans votre navigateur :
+Once the application is running, the interactive Swagger UI documentation is directly accessible in your browser:
 
-👉 **Interface Swagger UI** : [`http://localhost:8081/swagger-ui/index.html`](http://localhost:8081/swagger-ui/index.html)  
-👉 **Spécification OpenAPI 3 (JSON)** : [`http://localhost:8081/v3/api-docs`](http://localhost:8081/v3/api-docs)
+👉 **Swagger UI Interface**: [`http://localhost:8081/swagger-ui/index.html`](http://localhost:8081/swagger-ui/index.html)  
+👉 **OpenAPI 3 Specification (JSON)**: [`http://localhost:8081/v3/api-docs`](http://localhost:8081/v3/api-docs)
 
 ---
 
-## 🌐 Guide des Endpoints & Exemples `curl`
+## 🌐 Endpoint Guide & `curl` Examples
 
-### 1. Créer un nouvel utilisateur (`POST /users`)
-Crée un compte avec mot de passe haché par BCrypt et génère automatiquement un identifiant UUID unique.
+### 1. Create a New User (`POST /users`)
+Creates an account with a BCrypt-hashed password and automatically generates a unique UUID.
 ```bash
 curl -X POST http://localhost:8081/users \
   -H "Content-Type: application/json" \
@@ -141,39 +141,39 @@ curl -X POST http://localhost:8081/users \
     "password": "secretPassword123"
   }'
 ```
-*Réponse HTTP 200 OK :*
+*Response HTTP 200 OK:*
 ```json
 {
   "id": "b8f05e32-1234-4a56-b789-0123456789ab",
   "pseudo": "Alice",
   "email": "alice@test.com",
-  "role": "ROLE_USER"
+  "roles": "ROLE_USER"
 }
 ```
 
-### 2. Consulter un profil utilisateur (`GET /users/{userId}`)
-Recherche un compte par son UUID.
+### 2. Get User Profile (`GET /users/{userId}`)
+Retrieves an account by UUID.
 ```bash
 curl -X GET http://localhost:8081/users/b8f05e32-1234-4a56-b789-0123456789ab
 ```
-*Si l'utilisateur n'existe pas, l'API répond proprement avec un code `404 NOT FOUND`.*
+*If the user does not exist, the API returns `404 NOT FOUND`.*
 
-### 3. Vérifier la validité d'un identifiant (`GET /users/{userId}/valid`)
-Endpoint léger dédié aux appels inter-services (notamment consommé par `Square Games`) :
+### 3. Verify User Existence (`GET /users/{userId}/valid`)
+Lightweight endpoint for inter-service existence checks (consumed by `Square Games`):
 ```bash
 curl -X GET http://localhost:8081/users/b8f05e32-1234-4a56-b789-0123456789ab/valid
 ```
-*Réponse HTTP 200 OK :* `true` (ou `false` si l'UUID est inconnu).
+*Response HTTP 200 OK:* `true` (or `false` if the UUID is unknown).
 
-### 4. Supprimer un utilisateur (`DELETE /users/{userId}`)
-Supprime définitivement un compte utilisateur.
+### 4. Delete a User (`DELETE /users/{userId}`)
+Permanently removes a user account.
 ```bash
 curl -X DELETE http://localhost:8081/users/b8f05e32-1234-4a56-b789-0123456789ab
 ```
-*Réponse : Code HTTP `204 NO CONTENT` (succès sans corps).*
+*Response: HTTP `204 NO CONTENT` (success with empty body).*
 
-### 5. S'authentifier et obtenir un JWT (`POST /auth/login`)
-Authentifie l'utilisateur via son pseudo et mot de passe, puis délivre un jeton JWT asymétrique signé avec RSA 2048 bits (RS256) :
+### 5. Authenticate and Obtain a JWT (`POST /auth/login`)
+Authenticates the user with username and password, then issues an asymmetric JWT token signed with RSA 2048 bits (RS256):
 ```bash
 curl -X POST http://localhost:8081/auth/login \
   -H "Content-Type: application/json" \
@@ -182,40 +182,40 @@ curl -X POST http://localhost:8081/auth/login \
     "password": "secretPassword123"
   }'
 ```
-*Réponse HTTP 200 OK :*
+*Response HTTP 200 OK:*
 ```json
 {
   "token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
   "type": "Bearer"
 }
 ```
-*(Si les identifiants sont erronés, l'API répond en `401 UNAUTHORIZED`).*
+*(If credentials are invalid, the API returns `401 UNAUTHORIZED`).*
 
 ---
 
-## 🧪 Exécution des Tests Automatisés
+## 🧪 Automated Test Suite Execution
 
-Le microservice est couvert par une suite de tests unitaires et d'intégration validant le contrôleur web, le contrôleur d'authentification, la couche service, le filtre JWT et le DAO avec **JUnit 5**, **Mockito** et **MockMvc** :
+The microservice is covered by a suite of unit and integration tests validating the web controller, auth controller, service layer, JWT filter, and DAO with **JUnit 5**, **Mockito**, and **MockMvc**:
 
 ```bash
-# Exécution de l'intégralité de la suite de tests (25 tests, 0 échec)
+# Run all tests (27 tests, 0 failures)
 ./mvnw clean test -Dspring.profiles.active=h2
 ```
 
 ---
 
-## 🔄 Rôle Architectural : Authorization Server dans l'Écosystème
+## 🔄 Architectural Role: Authorization Server in the Ecosystem
 
-Dans notre écosystème microservices :
-1. **Square Users (`SU` - Port 8081)** agit comme **Authorization Server** :
-   - Gère le cycle de vie des utilisateurs et le hachage sécurisé BCrypt des mots de passe.
-   - Délivre des jetons JWT asymétriques signés par sa clé privée RSA 2048 bits via `POST /auth/login`.
-   - Inclut l'identifiant immuable `userId` et les rôles directement dans le payload du jeton.
-2. **Square Games (`SG` - Port 8080)** agit comme **Resource Server Stateless** :
-   - Dispose de la clé publique de `SU` (`public.pem`) pour vérifier instantanément la signature du jeton en mémoire vive.
-   - Ne sollicite aucun appel réseau vers `SU` pour identifier le créateur d'une partie (scalabilité maximale et zéro latence).
-3. **Validation Inter-Services des Adversaires** :
-   - L'endpoint léger `GET /users/{userId}/valid` reste utilisé par le `RestClient` de Square Games pour valider l'existence des adversaires invités dans une partie avant de persister celle-ci.
+In our microservices ecosystem:
+1. **Square Users (`SU` - Port 8081)** acts as the **Authorization Server**:
+   - Manages user lifecycles and secure BCrypt password hashing.
+   - Issues asymmetric JWT tokens signed with its 2048-bit RSA private key via `POST /auth/login`.
+   - Embeds immutable `userId` and role claims directly in the token payload.
+2. **Square Games (`SG` - Port 8080)** acts as the **Stateless Resource Server**:
+   - Holds `SU`'s public key (`public.pem`) to verify token signatures in memory instantly.
+   - Requires zero network calls to `SU` to identify game creators (maximum scalability, zero latency).
+3. **Inter-Service Opponent Validation**:
+   - The lightweight `GET /users/{userId}/valid` endpoint is used by Square Games' `RestClient` to verify that invited opponents exist before persisting a game.
 
-Pour cloner et démarrer le microservice de jeux :
-👉 [Dépôt GitHub Square Games (SG)](https://github.com/ImRobot777/spring_square_games)
+To clone and run the game engine microservice:
+👉 [Square Games (SG) GitHub Repository](https://github.com/ImRobot777/spring_square_games)

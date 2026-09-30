@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,7 +35,7 @@ public class UserController {
             @ApiResponse(responseCode = "400", description = "Invalid registration data")
     })
     @PostMapping("/users")
-    public UserResponse createUser(@RequestBody UserCreationParams requestParams) {
+    public UserResponse createUser(@RequestBody @Valid UserCreationParams requestParams) {
         return new UserResponse(this.userService.createUser(requestParams));
     }
 

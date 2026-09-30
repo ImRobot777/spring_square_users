@@ -19,8 +19,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -52,7 +51,8 @@ class UserControllerTest {
         String jsonPayload = """
         {
             "pseudo": "Bob",
-            "email": "bob@example.com"
+            "email": "bob@example.com",
+            "password" : "fakeHashPassword"
         }
         """;
 
@@ -65,6 +65,52 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.passwordHash").doesNotExist()); // Confirms hash exclusion;
 
         verify(userService).createUser(any(UserCreationParams.class));
+    }
+
+    @Test
+    void testCreateUser_WhenInvalidParams_ReturnsHttp400() throws Exception {
+
+        String jsonPayload1 = """
+        {
+            "pseudo": null,
+            "email": "bob@example.com",
+            "password" : "fakeHashPassword"
+        }
+        """;
+
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload1))
+                        .andExpect(status().isBadRequest()); // Asserts HTTP 400 Bad Request
+
+        String jsonPayload2 = """
+        {
+            "pseudo": "Bob",
+            "email": "bob-at-invalid",
+            "password" : "fakeHashPassword"
+        }
+        """;
+
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload2))
+                .andExpect(status().isBadRequest()); // Asserts HTTP 400 Bad Request
+
+
+        String jsonPayload3 = """
+        {
+            "pseudo": "Bob",
+            "email": "bob@example.com",
+            "password" : null
+        }
+        """;
+
+        mockMvc.perform(post("/users")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(jsonPayload3))
+                .andExpect(status().isBadRequest()); // Asserts HTTP 400 Bad Request
+
+        verifyNoInteractions(userService);
     }
 
 

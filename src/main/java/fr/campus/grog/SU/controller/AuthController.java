@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -39,7 +40,7 @@ public class AuthController {
             @ApiResponse(responseCode = "401", description = "Invalid credentials (incorrect username or password)")
     })
     @PostMapping("/auth/login")
-    public AuthResponse login(@RequestBody LoginRequest request) {
+    public AuthResponse login(@RequestBody @Valid LoginRequest request) {
         try {
             // Step 1: Delegate authentication to Spring Security's AuthenticationManager
             Authentication authentication = this.authenticationManager.authenticate(

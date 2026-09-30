@@ -75,6 +75,37 @@ class AuthControllerTest {
     }
 
     @Test
+    void testLogin_WhenInvalidParams_ReturnsHttp400() throws Exception {
+        String requestBody1 = """
+        {
+            "username": null,
+            "password": "wrongPassword"
+        }
+        """;
+
+        // --- 2 & 3. ACT & ASSERT ---
+        this.mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody1))
+                .andExpect(status().isBadRequest());
+
+        String requestBody2 = """
+        {
+            "username": "Alice",
+            "password": null
+        }
+        """;
+
+        // --- 2 & 3. ACT & ASSERT ---
+        this.mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody2))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(authenticationManager, jwtService);
+    }
+
+    @Test
     void testLogin_WithInvalidCredentials_ReturnsHttp401Unauthorized() throws Exception {
         // --- 1. ARRANGE ---
         when(this.authenticationManager.authenticate(any(UsernamePasswordAuthenticationToken.class)))
