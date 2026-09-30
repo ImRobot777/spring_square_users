@@ -14,6 +14,8 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -43,6 +45,7 @@ class UserControllerTest {
         createdUser.id = UUID.randomUUID().toString();
         createdUser.pseudo = "Bob";
         createdUser.email = "bob@example.com";
+        createdUser.passwordHash = "fakeHashPassword";
 
         when(userService.createUser(any(UserCreationParams.class))).thenReturn(createdUser);
 
@@ -56,10 +59,35 @@ class UserControllerTest {
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(jsonPayload))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pseudo").value("Bob"))
+                .andExpect(jsonPath("$.email").value("bob@example.com"))
+                .andExpect(jsonPath("$.passwordHash").doesNotExist()); // Confirms hash exclusion;
 
         verify(userService).createUser(any(UserCreationParams.class));
     }
+
+
+    @Test
+    void testGetAllUser_ReturnsHttp200() throws Exception {
+        List<UserEntity> users = new ArrayList<>();
+        UserEntity user =  new UserEntity();
+        user.pseudo = "Bob";
+        user.email = "bob@example.com";
+        user.passwordHash = "fakeHashPassword";
+        users.add(user);
+
+        when(userService.getUsers()).thenReturn(users);
+
+        mockMvc.perform(get("/users"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].pseudo").value("Bob"))
+                .andExpect(jsonPath("$[0].email").value("bob@example.com"))
+                .andExpect(jsonPath("$[0].passwordHash").doesNotExist()); // Confirms hash exclusion;
+
+        verify(userService).getUsers();
+    }
+
 
     @Test
     void testGetUser_WhenExists_ReturnsHttp200() throws Exception {
@@ -68,11 +96,15 @@ class UserControllerTest {
         user.id = userId.toString();
         user.pseudo = "Bob";
         user.email = "bob@example.com";
+        user.passwordHash = "fakeHashPassword";
 
         when(userService.getUser(userId)).thenReturn(user);
 
         mockMvc.perform(get("/users/{userId}", userId))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pseudo").value("Bob"))
+                .andExpect(jsonPath("$.email").value("bob@example.com"))
+                .andExpect(jsonPath("$.passwordHash").doesNotExist()); // Confirms hash exclusion;
 
         verify(userService).getUser(userId);
     }

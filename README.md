@@ -147,7 +147,6 @@ curl -X POST http://localhost:8081/users \
   "id": "b8f05e32-1234-4a56-b789-0123456789ab",
   "pseudo": "Alice",
   "email": "alice@test.com",
-  "passwordHash": "$2a$10$w...hachageBCryptSecurise...",
   "role": "ROLE_USER"
 }
 ```
@@ -199,7 +198,7 @@ curl -X POST http://localhost:8081/auth/login \
 Le microservice est couvert par une suite de tests unitaires et d'intégration validant le contrôleur web, le contrôleur d'authentification, la couche service, le filtre JWT et le DAO avec **JUnit 5**, **Mockito** et **MockMvc** :
 
 ```bash
-# Exécution de l'intégralité de la suite de tests (22 tests, 0 échec)
+# Exécution de l'intégralité de la suite de tests (25 tests, 0 échec)
 ./mvnw clean test -Dspring.profiles.active=h2
 ```
 

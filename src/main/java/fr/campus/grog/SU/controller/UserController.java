@@ -1,6 +1,7 @@
 package fr.campus.grog.SU.controller;
 
 import fr.campus.grog.SU.dto.UserCreationParams;
+import fr.campus.grog.SU.dto.UserResponse;
 import fr.campus.grog.SU.entity.UserEntity;
 import fr.campus.grog.SU.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -13,6 +14,7 @@ import org.springframework.security.access.prepost.PostAuthorize;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -32,8 +34,8 @@ public class UserController {
             @ApiResponse(responseCode = "400", description = "Invalid registration data")
     })
     @PostMapping("/users")
-    public UserEntity createUser(@RequestBody UserCreationParams requestParams) {
-        return this.userService.createUser(requestParams);
+    public UserResponse createUser(@RequestBody UserCreationParams requestParams) {
+        return new UserResponse(this.userService.createUser(requestParams));
     }
 
     @Operation(summary = "List all users", description = "Finds and retrieves all user profiles.")
@@ -42,8 +44,15 @@ public class UserController {
     })
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/users")
-    public List<UserEntity> getAllUsers(){
-        return this.userService.getUsers();
+    public List<UserResponse> getAllUsers(){
+        List<UserResponse> userResponseList = this.userService.getUsers().stream().map(UserResponse::new).toList();
+        /* the only line above <==>  3 lines below
+        List<UserResponse> userResponseList = new ArrayList<>();
+        for(UserEntity userEntity : this.userService.getUsers()){
+            userResponseList.add(new UserResponse(userEntity));
+        }
+        */
+        return userResponseList;
     }
 
     @Operation(summary = "Get user by ID", description = "Finds and returns a user profile by their UUID identifier.")
@@ -53,10 +62,10 @@ public class UserController {
     })
     @PostAuthorize("hasRole('ADMIN') or returnObject.pseudo == authentication.name") //authentication <==> UsernamePasswordAuthenticationToken
     @GetMapping("/users/{userId}")
-    public UserEntity getUser(
+    public UserResponse getUser(
             @Parameter(description = "UUID identifier of the user", required = true)
             @PathVariable UUID userId) {
-        return this.userService.getUser(userId);
+        return new UserResponse(this.userService.getUser(userId));
     }
 
     @Operation(summary = "Delete a user", description = "Permanently deletes an existing user account.")
